@@ -9,7 +9,10 @@
     "pipeline": "node pipeline.js",
     "models": "node pipeline.js --models",
     "images": "node scripts/image_generator.js",
-    "images:view": "node scripts/image_generator.js --html-only"
+    "images:view": "node scripts/image_generator.js --html-only",
+    "pdf": "python3 scripts/generate_pdf_preview.py",
+    "setup": "npm install && pip3 install -r requirements.txt",
+    "postinstall": "pip3 install -r requirements.txt || echo '⚠️  Python deps skipped (pip3 not found)'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
@@ -22,6 +25,7 @@
     "openai": "^4.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "python": ">=3.8.0"
   }
 }

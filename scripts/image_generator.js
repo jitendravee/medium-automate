@@ -24,6 +24,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { execSync } from "child_process";
 
 dotenv.config();
 
@@ -970,6 +971,15 @@ async function main() {
 
   console.log("\n📋  Open the preview:");
   console.log(`   open notes/processing/${slug}-preview.html\n`);
+  log("📄", "Generating PDF preview...");
+  try {
+    execSync(`python3 scripts/generate_pdf_preview.py ${slug}`, {
+      cwd: ROOT,
+      stdio: "inherit",
+    });
+  } catch (err) {
+    log("⚠️ ", `PDF generation failed: ${err.message}`);
+  }
 }
 
 main().catch((err) => {
