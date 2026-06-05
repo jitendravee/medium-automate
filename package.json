@@ -1,0 +1,27 @@
+{
+  "name": "ai-medium-platform",
+  "version": "1.0.0",
+  "description": "AI-powered pipeline to transform raw notes into polished Medium articles",
+  "type": "module",
+  "main": "pipeline.js",
+  "scripts": {
+    "start": "node pipeline.js",
+    "pipeline": "node pipeline.js",
+    "models": "node pipeline.js --models",
+    "images": "node scripts/image_generator.js",
+    "images:view": "node scripts/image_generator.js --html-only"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@google/genai": "^2.8.0",
+    "dotenv": "^16.4.5",
+    "form-data": "^4.0.5",
+    "node-fetch": "^3.3.2"
+  },
+  "optionalDependencies": {
+    "openai": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

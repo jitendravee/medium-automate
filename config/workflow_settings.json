@@ -1,0 +1,48 @@
+{
+  "pipeline": {
+    "steps": [
+      {
+        "id": "content_analyzer",
+        "name": "Content Analyzer",
+        "enabled": true,
+        "prompt_file": "content_analyzer.txt",
+        "output": "structured_json"
+      },
+      {
+        "id": "article_editor",
+        "name": "Article Editor",
+        "enabled": true,
+        "prompt_file": "article_editor.txt",
+        "output": "markdown"
+      },
+      {
+        "id": "seo_generator",
+        "name": "SEO Generator",
+        "enabled": true,
+        "prompt_file": "seo_generator.txt",
+        "output": "json"
+      },
+      {
+        "id": "image_prompt_generator",
+        "name": "Image Prompt Generator",
+        "enabled": true,
+        "prompt_file": "image_prompt_generator.txt",
+        "output": "text"
+      },
+      {
+        "id": "approval_gate",
+        "name": "Approval Gate",
+        "enabled": false,
+        "bypassed": true,
+        "notes": "Manual approval step — enable when ready"
+      },
+      {
+        "id": "medium_publisher",
+        "name": "Medium Publisher",
+        "enabled": false,
+        "bypassed": true,
+        "notes": "Requires MEDIUM_INTEGRATION_TOKEN in .env"
+      }
+    ]
+  }
+}
