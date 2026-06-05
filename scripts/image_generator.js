@@ -32,7 +32,7 @@ const ROOT = path.join(__dirname, "..");
 
 const PATHS = {
   processing: path.join(ROOT, "notes", "processing"),
-  published:  path.join(ROOT, "notes", "published"),
+  published: path.join(ROOT, "notes", "published"),
 };
 
 // ─── Image Generation Config ──────────────────────────────────────────────────
@@ -40,27 +40,29 @@ const PATHS = {
 const IMAGE_PROVIDER = process.env.IMAGE_PROVIDER || "pollinations";
 
 // Pollinations model — options: flux, turbo, gptimage
-const POLLINATIONS_MODEL = process.env.POLLINATIONS_MODEL || "flux";
+const POLLINATIONS_MODEL = process.env.POLLINATIONS_MODEL || "turbo";
 
 // Image dimensions
-const IMAGE_WIDTH  = parseInt(process.env.IMAGE_WIDTH  || "1400");
+const IMAGE_WIDTH = parseInt(process.env.IMAGE_WIDTH || "1400");
 const IMAGE_HEIGHT = parseInt(process.env.IMAGE_HEIGHT || "700");
 
 // ─── Cloudinary Config ────────────────────────────────────────────────────────
 
 function getCloudinaryConfig() {
-  const name   = process.env.CLOUDINARY_CLOUD_NAME;
-  const key    = process.env.CLOUDINARY_API_KEY;
+  const name = process.env.CLOUDINARY_CLOUD_NAME;
+  const key = process.env.CLOUDINARY_API_KEY;
   const secret = process.env.CLOUDINARY_API_SECRET;
 
   if (!name || name === "your_cloud_name") {
     throw new Error(
       "CLOUDINARY_CLOUD_NAME is not set in .env\n" +
-      "Get your free credentials at cloudinary.com (no credit card needed)"
+        "Get your free credentials at cloudinary.com (no credit card needed)",
     );
   }
   if (!key || !secret) {
-    throw new Error("CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET must be set in .env");
+    throw new Error(
+      "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET must be set in .env",
+    );
   }
 
   return { name, key, secret };
@@ -107,22 +109,34 @@ function parseImagePrompts(content) {
   }
 
   // Extract section prompts
-  const sectionBlock = content.match(/## Section Images\s*\n([\s\S]*?)(?=\n## Style|$)/i);
+  const sectionBlock = content.match(
+    /## Section Images\s*\n([\s\S]*?)(?=\n## Style|$)/i,
+  );
   if (sectionBlock) {
-    const sections = sectionBlock[1].split(/###\s*\d+/g).filter((s) => s.trim());
+    const sections = sectionBlock[1]
+      .split(/###\s*\d+/g)
+      .filter((s) => s.trim());
     sections.forEach((s, i) => {
       const prompt = s.trim();
       if (prompt) {
-        images.push({ id: `section_${i + 1}`, label: `Section ${i + 1}`, prompt });
+        images.push({
+          id: `section_${i + 1}`,
+          label: `Section ${i + 1}`,
+          prompt,
+        });
       }
     });
   }
 
   // Extract style and palette for context
-  const styleMatch   = content.match(/## Style Guidelines\s*\n([\s\S]*?)(?=\n##|$)/i);
-  const paletteMatch = content.match(/## Color Palette\s*\n([\s\S]*?)(?=\n##|$)/i);
+  const styleMatch = content.match(
+    /## Style Guidelines\s*\n([\s\S]*?)(?=\n##|$)/i,
+  );
+  const paletteMatch = content.match(
+    /## Color Palette\s*\n([\s\S]*?)(?=\n##|$)/i,
+  );
 
-  const style   = styleMatch   ? styleMatch[1].trim()   : "";
+  const style = styleMatch ? styleMatch[1].trim() : "";
   const palette = paletteMatch ? paletteMatch[1].trim() : "";
 
   return { images, style, palette };
@@ -137,9 +151,11 @@ function parseImagePrompts(content) {
  */
 async function generateViaPollinationsAI(prompt) {
   const { default: fetch } = await import("node-fetch");
+  const apiKey = process.env.POLLINATIONS_API_KEY;
 
   const encoded = encodeURIComponent(prompt);
-  const url = `https://image.pollinations.ai/prompt/${encoded}?width=${IMAGE_WIDTH}&height=${IMAGE_HEIGHT}&model=${POLLINATIONS_MODEL}&nologo=true&enhance=true`;
+  // New unified endpoint: gen.pollinations.ai
+  const url = `https://gen.pollinations.ai/image/${encoded}?width=${IMAGE_WIDTH}&height=${IMAGE_HEIGHT}&model=${POLLINATIONS_MODEL}&nologo=true${apiKey ? `&key=${apiKey}` : ""}`;
 
   log("🌐", `Requesting image from Pollinations.ai (${POLLINATIONS_MODEL})...`);
   log("🔗", `URL: ${url.substring(0, 80)}...`);
@@ -153,13 +169,17 @@ async function generateViaPollinationsAI(prompt) {
   });
 
   if (!response.ok) {
-    throw new Error(`Pollinations.ai error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Pollinations.ai error: ${response.status} ${response.statusText}`,
+    );
   }
 
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("image")) {
     const text = await response.text();
-    throw new Error(`Expected image, got: ${contentType}\n${text.substring(0, 200)}`);
+    throw new Error(
+      `Expected image, got: ${contentType}\n${text.substring(0, 200)}`,
+    );
   }
 
   const buffer = Buffer.from(await response.arrayBuffer());
@@ -193,7 +213,7 @@ async function generateViaStabilityAI(prompt) {
         form.append("output_format", "jpeg");
         return form;
       })(),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -213,7 +233,9 @@ async function generateImage(prompt) {
     case "stability":
       return generateViaStabilityAI(prompt);
     default:
-      throw new Error(`Unknown IMAGE_PROVIDER "${IMAGE_PROVIDER}". Use: pollinations, stability`);
+      throw new Error(
+        `Unknown IMAGE_PROVIDER "${IMAGE_PROVIDER}". Use: pollinations, stability`,
+      );
   }
 }
 
@@ -227,7 +249,7 @@ async function generateImage(prompt) {
 async function uploadToCloudinary(imageBuffer, publicId, folder) {
   const { default: fetch } = await import("node-fetch");
   const FormData = (await import("form-data")).default;
-  const crypto   = await import("crypto");
+  const crypto = await import("crypto");
 
   const { name, key, secret } = getCloudinaryConfig();
 
@@ -236,13 +258,8 @@ async function uploadToCloudinary(imageBuffer, publicId, folder) {
   const fullPublicId = `${folderPath}/${publicId}`;
 
   // Generate SHA1 signature for signed upload
-  const paramsToSign = [
-    `folder=${folderPath}`,
-    `public_id=${publicId}`,
-    `timestamp=${timestamp}`,
-  ]
-    .sort()
-    .join("&");
+  // ✅ Include overwrite in BOTH the signature AND the form — they must match
+  const paramsToSign = `folder=${folderPath}&overwrite=true&public_id=${publicId}&timestamp=${timestamp}`;
 
   const signature = crypto
     .createHash("sha1")
@@ -251,65 +268,73 @@ async function uploadToCloudinary(imageBuffer, publicId, folder) {
 
   const form = new FormData();
   form.append("file", imageBuffer, {
-    filename:    `${publicId}.jpg`,
+    filename: `${publicId}.jpg`,
     contentType: "image/jpeg",
   });
-  form.append("api_key",   key);
+  form.append("api_key", key);
   form.append("timestamp", timestamp);
   form.append("signature", signature);
   form.append("public_id", publicId);
-  form.append("folder",    folderPath);
-  form.append("overwrite", "true");
+  form.append("folder", folderPath);
+  form.append("overwrite", "true"); // ← keep this, now it's also in the signature
 
   const uploadUrl = `https://api.cloudinary.com/v1_1/${name}/image/upload`;
 
   log("☁️ ", `Uploading to Cloudinary (${name}/${fullPublicId})...`);
 
   const response = await fetch(uploadUrl, {
-    method:  "POST",
-    body:    form,
+    method: "POST",
+    body: form,
     headers: form.getHeaders(),
   });
 
   const result = await response.json();
 
   if (!response.ok || result.error) {
-    throw new Error(`Cloudinary upload failed: ${result.error?.message || response.statusText}`);
+    throw new Error(
+      `Cloudinary upload failed: ${result.error?.message || response.statusText}`,
+    );
   }
 
   log("✅", `Uploaded: ${result.secure_url}`);
 
   return {
-    url:       result.secure_url,
+    url: result.secure_url,
     public_id: result.public_id,
-    width:     result.width,
-    height:    result.height,
-    format:    result.format,
-    bytes:     result.bytes,
+    width: result.width,
+    height: result.height,
+    format: result.format,
+    bytes: result.bytes,
   };
 }
 
 // ─── HTML Preview Generator ───────────────────────────────────────────────────
 
-function generateHTMLPreview(slug, imageResults, articleTitle, seoData, palette) {
+function generateHTMLPreview(
+  slug,
+  imageResults,
+  articleTitle,
+  seoData,
+  palette,
+) {
   const colors = palette
     .split(",")
     .map((c) => c.trim())
     .filter((c) => c.startsWith("#"));
 
-  const primary   = colors[0] || "#2C3E50";
-  const accent    = colors[1] || "#3498DB";
-  const purple    = colors[2] || "#8E44AD";
-  const gold      = colors[3] || "#F39C12";
-  const light     = colors[4] || "#ECF0F1";
+  const primary = colors[0] || "#2C3E50";
+  const accent = colors[1] || "#3498DB";
+  const purple = colors[2] || "#8E44AD";
+  const gold = colors[3] || "#F39C12";
+  const light = colors[4] || "#ECF0F1";
 
-  const title    = articleTitle  || slug;
-  const tags     = seoData?.medium_tags || [];
-  const summary  = seoData?.article_summary || "";
+  const title = articleTitle || slug;
+  const tags = seoData?.medium_tags || [];
+  const summary = seoData?.article_summary || "";
   const readTime = seoData?.reading_time_minutes || 5;
-  const keyword  = seoData?.primary_keyword || "";
+  const keyword = seoData?.primary_keyword || "";
 
-  const hero     = imageResults.find((r) => r.id === "hero");
+  const hero = imageResults.find((r) => r.id === "hero");
   const sections = imageResults.filter((r) => r.id !== "hero");
 
   const sectionCards = sections
@@ -329,7 +354,7 @@ function generateHTMLPreview(slug, imageResults, articleTitle, seoData, palette)
             <button onclick="copy('${s.cloudinary.url}', this)">Copy URL</button>
           </div>
         </div>
-      </div>`
+      </div>`,
     )
     .join("\n");
 
@@ -337,20 +362,18 @@ function generateHTMLPreview(slug, imageResults, articleTitle, seoData, palette)
     .map(
       (c) => `<div class="swatch" style="background:${c}" title="${c}">
                 <span>${c}</span>
-               </div>`
+               </div>`,
     )
     .join("\n");
 
   const metaRows = [
     ["Primary Keyword", keyword],
-    ["Reading Time",    `${readTime} min`],
-    ["Tags",           tags.join(" · ")],
-    ["Slug",           seoData?.slug || "—"],
+    ["Reading Time", `${readTime} min`],
+    ["Tags", tags.join(" · ")],
+    ["Slug", seoData?.slug || "—"],
   ]
     .filter(([, v]) => v)
-    .map(
-      ([k, v]) => `<tr><td class="meta-key">${k}</td><td>${v}</td></tr>`
-    )
+    .map(([k, v]) => `<tr><td class="meta-key">${k}</td><td>${v}</td></tr>`)
     .join("\n");
 
   return `<!DOCTYPE html>
@@ -744,7 +767,7 @@ ${
         return acc;
       }, {}),
       null,
-      2
+      2,
     )}</pre>
   </div>
 
@@ -797,7 +820,7 @@ ${
 async function main() {
   const args = process.argv.slice(2);
   const htmlOnly = args.includes("--html-only");
-  const slugArg  = args.find((a) => !a.startsWith("--"));
+  const slugArg = args.find((a) => !a.startsWith("--"));
 
   // Auto-detect slug from processing dir
   let slug = slugArg;
@@ -813,11 +836,11 @@ async function main() {
     log("🔍", `Auto-detected slug: ${slug}`);
   }
 
-  const imageFile   = path.join(PATHS.processing, `${slug}-image.txt`);
-  const seoFile     = path.join(PATHS.processing, `${slug}-seo.json`);
+  const imageFile = path.join(PATHS.processing, `${slug}-image.txt`);
+  const seoFile = path.join(PATHS.processing, `${slug}-seo.json`);
   const articleFile = path.join(PATHS.processing, `${slug}-article.md`);
-  const jsonOut     = path.join(PATHS.processing, `${slug}-images.json`);
-  const htmlOut     = path.join(PATHS.processing, `${slug}-preview.html`);
+  const jsonOut = path.join(PATHS.processing, `${slug}-images.json`);
+  const htmlOut = path.join(PATHS.processing, `${slug}-preview.html`);
 
   if (!fs.existsSync(imageFile)) {
     log("❌", `Image prompts file not found: ${imageFile}`);
@@ -826,20 +849,31 @@ async function main() {
 
   // Load supporting files
   const promptContent = fs.readFileSync(imageFile, "utf-8");
-  const seoData       = seoFile     && fs.existsSync(seoFile)     ? JSON.parse(fs.readFileSync(seoFile, "utf-8"))   : null;
-  const articleRaw    = articleFile && fs.existsSync(articleFile) ? fs.readFileSync(articleFile, "utf-8")           : "";
+  const seoData =
+    seoFile && fs.existsSync(seoFile)
+      ? JSON.parse(fs.readFileSync(seoFile, "utf-8"))
+      : null;
+  const articleRaw =
+    articleFile && fs.existsSync(articleFile)
+      ? fs.readFileSync(articleFile, "utf-8")
+      : "";
 
   const articleTitle = articleRaw.match(/^#\s+(.+)/m)?.[1] || slug;
   const { images, palette } = parseImagePrompts(promptContent);
 
-  console.log("\n╔════════════════════════════════════════════════════════════╗");
+  console.log(
+    "\n╔════════════════════════════════════════════════════════════╗",
+  );
   console.log("║        AI Medium Platform — Image Generator                ║");
   console.log("╚════════════════════════════════════════════════════════════╝");
   console.log(`\n🏷️   Slug:     ${slug}`);
   console.log(`🖼️   Images:   ${images.length} prompts found`);
   console.log(`⚙️   Provider: ${IMAGE_PROVIDER}`);
   if (!htmlOnly) {
-    log("☁️ ", `Cloudinary: ${process.env.CLOUDINARY_CLOUD_NAME || "(not set)"}`);
+    log(
+      "☁️ ",
+      `Cloudinary: ${process.env.CLOUDINARY_CLOUD_NAME || "(not set)"}`,
+    );
   }
   console.log();
 
@@ -848,17 +882,25 @@ async function main() {
   if (htmlOnly) {
     // Load previously saved results
     if (!fs.existsSync(jsonOut)) {
-      log("❌", `No saved results found at ${jsonOut}. Run without --html-only first.`);
+      log(
+        "❌",
+        `No saved results found at ${jsonOut}. Run without --html-only first.`,
+      );
       process.exit(1);
     }
     imageResults = JSON.parse(fs.readFileSync(jsonOut, "utf-8"));
-    log("📂", `Loaded ${imageResults.length} saved results from ${slug}-images.json`);
+    log(
+      "📂",
+      `Loaded ${imageResults.length} saved results from ${slug}-images.json`,
+    );
   } else {
     imageResults = [];
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
-      console.log(`\n─── Image ${i + 1}/${images.length}: ${img.label} ${"─".repeat(30)}`);
+      console.log(
+        `\n─── Image ${i + 1}/${images.length}: ${img.label} ${"─".repeat(30)}`,
+      );
       log("📝", `Prompt: ${img.prompt.substring(0, 100)}...`);
 
       try {
@@ -866,13 +908,17 @@ async function main() {
         const imageBuffer = await generateImage(img.prompt);
 
         // 2. Upload to Cloudinary
-        const publicId    = `${slug}-${img.id}`;
-        const cloudResult = await uploadToCloudinary(imageBuffer, publicId, "ai-medium-platform");
+        const publicId = `${slug}-${img.id}`;
+        const cloudResult = await uploadToCloudinary(
+          imageBuffer,
+          publicId,
+          "ai-medium-platform",
+        );
 
         imageResults.push({
-          id:        img.id,
-          label:     img.label,
-          prompt:    img.prompt,
+          id: img.id,
+          label: img.label,
+          prompt: img.prompt,
           cloudinary: cloudResult,
         });
 
@@ -893,14 +939,24 @@ async function main() {
   }
 
   // Generate HTML preview
-  const html = generateHTMLPreview(slug, imageResults, articleTitle, seoData, palette);
+  const html = generateHTMLPreview(
+    slug,
+    imageResults,
+    articleTitle,
+    seoData,
+    palette,
+  );
   fs.writeFileSync(htmlOut, html, "utf-8");
   log("💾", `Saved preview: notes/processing/${slug}-preview.html`);
 
   // Summary
-  console.log("\n╔════════════════════════════════════════════════════════════╗");
+  console.log(
+    "\n╔════════════════════════════════════════════════════════════╗",
+  );
   console.log("║                     Done ✅                                ║");
-  console.log("╚════════════════════════════════════════════════════════════╝\n");
+  console.log(
+    "╚════════════════════════════════════════════════════════════╝\n",
+  );
   console.log("📁  Output files:");
   console.log(`   → notes/processing/${slug}-images.json   (Cloudinary URLs)`);
   console.log(`   → notes/processing/${slug}-preview.html  (Visual preview)\n`);
